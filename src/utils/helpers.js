@@ -113,6 +113,34 @@ export function useFoods() {
 }
 
 /**
+ * Hook: last 25 unique foods logged (ordered most-recent first)
+ * Returns an array of food objects
+ */
+export function useRecentFoods() {
+  const recentLogs = useLiveQuery(async () => {
+    // Get all logs ordered by consumedAt desc
+    const logs = await db.logs.orderBy('consumedAt').reverse().toArray();
+    // Deduplicate by foodId, keeping last 25 unique
+    const seen = new Set();
+    const unique = [];
+    for (const log of logs) {
+      if (!seen.has(log.foodId)) {
+        seen.add(log.foodId);
+        unique.push(log.foodId);
+        if (unique.length >= 25) break;
+      }
+    }
+    // Fetch the corresponding food objects
+    const foods = await db.foods.bulkGet(unique);
+    // Filter out any that may have been deleted
+    return foods.filter(Boolean);
+  }, []) ?? [];
+
+  return recentLogs;
+}
+
+
+/**
  * Add a food log entry
  */
 export async function addLog({ date, foodId, quantityGrams, overrides = {} }) {

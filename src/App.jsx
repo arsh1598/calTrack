@@ -186,8 +186,7 @@ function BottomNav({ activeTab, setActiveTab }) {
 }
 
 // ── Dashboard Tab ─────────────────────────────────────────────────────────────
-function DashboardTab({ selectedDate, setSelectedDate, goals }) {
-  const [logDrawerOpen, setLogDrawerOpen] = useState(false);
+function DashboardTab({ selectedDate, setSelectedDate, goals, onOpenLogDrawer }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const logs = useDayLogs(selectedDate);
   const foodMap = useFoodMap();
@@ -287,7 +286,7 @@ function DashboardTab({ selectedDate, setSelectedDate, goals }) {
       <div className="h-24" /> {/* Bottom padding for nav */}
 
       <motion.button
-        onClick={() => setLogDrawerOpen(true)}
+        onClick={() => onOpenLogDrawer()}
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         className="fixed right-5 bottom-24 z-20 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/40 flex items-center justify-center"
@@ -296,7 +295,6 @@ function DashboardTab({ selectedDate, setSelectedDate, goals }) {
         <Plus size={24} className="text-white" />
       </motion.button>
 
-      <LogDrawer isOpen={logDrawerOpen} onClose={() => setLogDrawerOpen(false)} date={selectedDate} />
       <CalendarView
         isOpen={calendarOpen}
         onClose={() => setCalendarOpen(false)}
@@ -318,9 +316,14 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(formatDate());
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showPersistBanner, setShowPersistBanner] = useState(false);
-  const [foodsOpen, setFoodsOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [logDrawerOpen, setLogDrawerOpen] = useState(false);
+  const [preselectedFood, setPreselectedFood] = useState(null);
   const goals = useGoals();
+
+  const handleOpenLogDrawer = (food = null) => {
+    setPreselectedFood(food);
+    setLogDrawerOpen(true);
+  };
 
   // Request storage persistence on mount
   useEffect(() => {
@@ -335,17 +338,6 @@ export default function App() {
     const t = setTimeout(checkPersistence, 1500);
     return () => clearTimeout(t);
   }, []);
-
-  // Handle tab switching to open drawers
-  useEffect(() => {
-    if (activeTab === 'foods') {
-      setFoodsOpen(true);
-      setActiveTab('dashboard');
-    } else if (activeTab === 'settings') {
-      setSettingsOpen(true);
-      setActiveTab('dashboard');
-    }
-  }, [activeTab]);
 
   return (
     <div className="min-h-dvh bg-zinc-950 relative overflow-x-hidden">
@@ -378,11 +370,20 @@ export default function App() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            <DashboardTab
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              goals={goals}
-            />
+            {activeTab === 'dashboard' && (
+              <DashboardTab
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                goals={goals}
+                onOpenLogDrawer={handleOpenLogDrawer}
+              />
+            )}
+            {activeTab === 'foods' && (
+              <FoodDirectoryPanel inline={true} onOpenLogDrawer={handleOpenLogDrawer} />
+            )}
+            {activeTab === 'settings' && (
+              <SettingsPanel inline={true} />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -390,9 +391,13 @@ export default function App() {
       {/* Bottom Nav */}
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Panels */}
-      <FoodDirectoryPanel isOpen={foodsOpen} onClose={() => setFoodsOpen(false)} />
-      <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {/* Overlays */}
+      <LogDrawer 
+        isOpen={logDrawerOpen} 
+        onClose={() => setLogDrawerOpen(false)} 
+        date={selectedDate} 
+        preselectedFood={preselectedFood} 
+      />
     </div>
   );
 }
